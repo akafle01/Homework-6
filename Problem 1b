@@ -1,0 +1,59 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from sklearn.linear_model import LinearRegression
+
+# Load housing dataset
+# features (X) and training set (Y)
+dataset = pd.read_csv('Housing (1).csv')
+
+# extract features (X) and target values (y)
+X = dataset.drop('price', axis=1)
+y = dataset['price']
+
+# categorical columns
+categorical_columns = ['mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'parking', 'prefarea', 'furnishingstatus']
+
+# a column transformer for preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), X.columns.difference(categorical_columns)),
+        ('cat', OneHotEncoder(), categorical_columns)
+    ])
+
+# Split the dataset into training (80%) and validation (20%) sets
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Preprocess the features
+X_train_scaled = preprocessor.fit_transform(X_train)
+X_val_scaled = preprocessor.transform(X_val)
+
+# Build the Fully Connected Neural Network with increased complexity
+model = Sequential()
+model.add(Dense(32, activation='relu', input_shape=(X_train_scaled.shape[1],)))
+model.add(Dense(64, activation='relu'))
+model.add(Dense(16, activation='relu'))
+model.add(Dense(1))  # Output layer for regression task
+
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
+
+# Print the summary of the neural network to see the number of trainable parameters
+model.summary()
+
+# Train the model
+model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, validation_data=(X_val_scaled, y_val))
+
+# Evaluate the model on the validation set
+val_loss_nn = model.evaluate(X_val_scaled, y_val)
+print(f'Validation Loss (Neural Network): {val_loss_nn}')
+
+# Calculate the number of trainable parameters in linear regression
+linear_reg_model = LinearRegression()
+linear_reg_model.fit(X_train_scaled, y_train)
+num_parameters_linear_reg = len(linear_reg_model.coef_) + 1
+print(f'Number of trainable parameters in linear regression: {num_parameters_linear_reg}')
